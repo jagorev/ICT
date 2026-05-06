@@ -1,0 +1,20 @@
+
+=========================================
+     TEST MEMORIE ESP32-S3 N16R8         
+=========================================
+
+Dimensione Flash Totale: 	16 MB
+
+Controllo PSRAM in corso...
+-> RISULTATO: PSRAM Rilevata con successo! ✅
+Dimensione PSRAM Totale: 	7 MB
+PSRAM Attualmente Libera: 	7 MB
+
+Controllo RAM Interna (SRAM)...
+RAM Interna Totale: 		385 KB
+RAM Interna Libera: 		361 KB
+
+=========================================
+               TEST CONCLUSO             
+=========================================
+
