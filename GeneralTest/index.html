@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VDA telkonet - Hotel Control Panel</title>
+    
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%231a1a1a'/><text x='50' y='65' font-family='Arial, sans-serif' font-size='45' font-weight='bold' fill='%23b08d5b' text-anchor='middle'>VDA</text></svg>">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #fdfdfd;
+            --sidebar-bg: #ffffff;
+            --text-main: #1a1a1a;
+            --text-muted: #757575;
+            --accent: #b08d5b;
+            --border-color: #ededed;
+            
+            /* Colori Stati richiesti */
+            --occupied: #ef6c00; /* Arancione */
+            --vacant: #2e7d32;  /* Verde */
+            --cleaning: #0288d1; /* Blu Staff */
+            
+            --sidebar-width: 260px;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Montserrat', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); display: flex; min-height: 100vh; overflow-x: hidden; }
+
+        /* --- SIDEBAR --- */
+        aside {
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+        .sidebar-logo { padding: 2.5rem 1.5rem; border-bottom: 1px solid var(--border-color); }
+        .sidebar-logo h1 { font-size: 1.2rem; font-weight: 700; letter-spacing: -0.5px; }
+        .sidebar-logo span { font-weight: 300; }
+        nav { flex-grow: 1; padding: 1.5rem 0; }
+        .nav-group { margin-bottom: 2rem; }
+        .nav-label { padding: 0 1.5rem; font-size: 0.65rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 0.75rem; }
+        .nav-item { padding: 0.85rem 1.5rem; display: flex; align-items: center; gap: 12px; color: var(--text-main); text-decoration: none; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; cursor: pointer; border-right: 3px solid transparent; }
+        .nav-item:hover { background-color: #f9f9f9; color: var(--accent); }
+        .nav-item.active { border-right: 3px solid var(--accent); background-color: #fcf9f5; color: var(--accent); }
+        .sidebar-footer { padding: 1.5rem; border-top: 1px solid var(--border-color); font-size: 0.75rem; color: var(--text-muted); }
+
+        /* --- MAIN CONTENT --- */
+        main { margin-left: var(--sidebar-width); flex-grow: 1; padding: 2.5rem 3rem; min-height: 100vh; }
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3rem; }
+        .security-status { 
+            display: flex; 
+            align-items: center; 
+            gap: 10px; 
+            background-color: #d4edda; 
+            color: #155724; 
+            padding: 0.6rem 1.2rem; 
+            border-radius: 4px; 
+            font-size: 0.8rem; 
+            font-weight: 600; 
+        }
+
+        /* --- DASHBOARD STATS --- */
+        .dashboard-stats { display: flex; gap: 3rem; margin-bottom: 2.5rem; background: white; padding: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); }
+        .stat-item span { display: block; font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; font-weight: 700; margin-bottom: 0.25rem; }
+        .stat-item strong { font-size: 1.4rem; font-weight: 600; }
+
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem; }
+        .room-card { background: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 1.5rem; transition: all 0.3s ease; border-top: 4px solid var(--vacant); }
+        .room-card.occupied { border-top: 4px solid var(--occupied); }
+        .room-card.cleaning { border-top: 4px solid var(--cleaning); background-color: #f0faff; }
+        
+        .room-id { font-size: 1.4rem; font-weight: 700; }
+        .badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; padding: 4px 8px; border-radius: 2px; background: #e8f5e9; color: var(--vacant); }
+        .room-card.occupied .badge { background: #fff3e0; color: var(--occupied); }
+        .room-card.cleaning .badge { background: #e1f5fe; color: var(--cleaning); }
+
+        .progress-fill { height: 4px; background: #eee; width: 100%; margin: 10px 0; position: relative; }
+        .progress-inner { height: 100%; width: 0%; transition: width 0.5s; background: var(--vacant); }
+        .occupied .progress-inner { background: var(--occupied); }
+        .cleaning .progress-inner { background: var(--cleaning); }
+        .timestamp { font-size: 0.7rem; color: var(--text-muted); margin-top: 10px; display: block; }
+
+        /* --- VIEW: MAPPA PIANO --- */
+        .floor-section { margin-bottom: 4rem; }
+        .floor-title { font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1.5rem; border-left: 3px solid var(--accent); padding-left: 10px; }
+        .floor-map-container { display: grid; grid-template-columns: 1fr 60px 1fr; gap: 15px; max-width: 600px; }
+        .corridor { background: #f0f0f0; grid-column: 2; border-radius: 4px; display: flex; align-items: center; justify-content: center; writing-mode: vertical-rl; font-size: 0.6rem; color: #aaa; text-transform: uppercase; letter-spacing: 2px; }
+        .rooms-side { display: grid; grid-template-rows: repeat(2, 1fr); gap: 10px; }
+        .map-room { background: white; height: 70px; display: flex; align-items: center; justify-content: center; font-weight: 700; border-radius: 4px; border: 2px solid var(--vacant); color: var(--vacant); transition: 0.3s; }
+        .map-room.occupied { border-color: var(--occupied); color: var(--occupied); background: #fff3e0; }
+        .map-room.cleaning { border-color: var(--cleaning); color: var(--cleaning); background: #e1f5fe; }
+
+        /* --- VIEW: STAFF --- */
+        table { width: 100%; border-collapse: collapse; background: white; border: 1px solid var(--border-color); }
+        th, td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { background: #f9f9f9; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); }
+        .staff-status-tag { font-size: 0.7rem; font-weight: 700; padding: 4px 8px; border-radius: 4px; }
+        .status-active { background: #e1f5fe; color: var(--cleaning); }
+        .status-idle { background: #f5f5f5; color: #999; }
+
+        /* --- VIEW: SETTINGS --- */
+        .settings-card { background: white; padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; max-width: 600px; }
+        .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f0f0f0; }
+        .setting-row:last-child { border-bottom: none; }
+        .toggle { position: relative; display: inline-block; width: 40px; height: 20px; }
+        .toggle input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #ccc; transition: .4s; border-radius: 20px; }
+        .slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 2px; bottom: 2px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: var(--accent); }
+        input:checked + .slider:before { transform: translateX(20px); }
+    </style>
+</head>
+<body>
+
+    <aside>
+        <div class="sidebar-logo">
+            <h1>VDA <span>&middot; telkonet</span></h1>
+        </div>
+        <nav>
+            <div class="nav-group" id="nav-operations">
+                <div class="nav-label">Operazioni</div>
+                <div class="nav-item active" onclick="showView('dashboard', this)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                    <span>Dashboard</span>
+                </div>
+                <div class="nav-item" onclick="showView('mappa', this)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                    <span>Mappa Piano</span>
+                </div>
+                <div class="nav-item" onclick="showView('staff', this)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                    <span>Gestione Staff</span>
+                </div>
+            </div>
+
+            <div class="nav-group" id="nav-filters">
+                <div class="nav-label">Filtri Dashboard</div>
+                <div class="nav-item active" onclick="applyFilter('all', this)"><span>Mostra Tutte</span></div>
+                <div class="nav-item" onclick="applyFilter('vacant', this)"><span>Libere</span></div>
+                <div class="nav-item" onclick="applyFilter('occupied', this)"><span>Occupate</span></div>
+                <div class="nav-item" onclick="applyFilter('cleaning', this)"><span>In Pulizia</span></div>
+            </div>
+
+            <div class="nav-group" id="nav-system">
+                <div class="nav-label">Sistema</div>
+                <div class="nav-item" onclick="showView('settings', this)">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                    <span>Impostazioni</span>
+                </div>
+            </div>
+        </nav>
+        <div class="sidebar-footer">v1.0.0-Demo &bull; Telkonet Cloud</div>
+    </aside>
+
+    <main>
+        <header>
+            <div class="page-title">
+                <h2 id="view-title">Dashboard Stanze</h2>
+                <p id="view-desc">Monitoraggio True Presence&trade;</p>
+            </div>
+            <div class="security-status">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                Connessione Protetta & Criptata
+            </div>
+        </header>
+
+        <section id="view-dashboard" class="view active">
+            <div class="dashboard-stats">
+                <div class="stat-item"><span>Monitorate</span><strong id="stat-total">12</strong></div>
+                <div class="stat-item"><span>Occupate</span><strong id="stat-occ" style="color: var(--occupied);">0</strong></div>
+                <div class="stat-item"><span>Libere</span><strong id="stat-vac" style="color: var(--vacant);">12</strong></div>
+                <div class="stat-item"><span>In Pulizia</span><strong id="stat-clean" style="color: var(--cleaning);">0</strong></div>
+            </div>
+            <div class="grid" id="room-grid"></div>
+        </section>
+
+        <section id="view-mappa" class="view">
+            <div class="floor-section">
+                <div class="floor-title">Primo Piano (1xx)</div>
+                <div class="floor-map-container"><div class="rooms-side" id="map-f1-left"></div><div class="corridor">Corridoio</div><div class="rooms-side" id="map-f1-right"></div></div>
+            </div>
+            <div class="floor-section">
+                <div class="floor-title">Secondo Piano (2xx)</div>
+                <div class="floor-map-container"><div class="rooms-side" id="map-f2-left"></div><div class="corridor">Corridoio</div><div class="rooms-side" id="map-f2-right"></div></div>
+            </div>
+        </section>
+
+        <section id="view-staff" class="view">
+            <table>
+                <thead><tr><th>Operatore</th><th>Ruolo</th><th>Stato</th><th>Stanza Attuale</th></tr></thead>
+                <tbody id="staff-table-body">
+                    </tbody>
+            </table>
+        </section>
+
+        <section id="view-settings" class="view">
+            <div class="settings-card">
+                <div class="setting-row"><span>Notifiche push occupazione</span><label class="toggle"><input type="checkbox" checked><span class="slider"></span></label></div>
+                <div class="setting-row"><span>Modalità risparmio energetico (Auto)</span><label class="toggle"><input type="checkbox" checked><span class="slider"></span></label></div>
+                <div class="setting-row"><span>Rilevamento Staff (BLE Beacon)</span><label class="toggle"><input type="checkbox" checked><span class="slider"></span></label></div>
+                <div class="setting-row"><span>Log criticità hardware</span><label class="toggle"><input type="checkbox"><span class="slider"></span></label></div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const rooms = ["101", "102", "103", "104", "105", "106", "107", "108", "201", "202", "203", "204"];
+        
+        // Configurazione Staff
+        const staffMembers = [
+            { id: 'marco', name: 'Marco Rossi', room: null },
+            { id: 'elena', name: 'Elena Bianchi', room: null },
+            { id: 'giulia', name: 'Giulia Neri', room: null },
+            { id: 'antonio', name: 'Antonio Russo', room: null },
+            { id: 'sofia', name: 'Sofia Romano', room: null }
+        ];
+
+        // Inizializzazione UI
+        const grid = document.getElementById('room-grid');
+        const mapF1L = document.getElementById('map-f1-left');
+        const mapF1R = document.getElementById('map-f1-right');
+        const mapF2L = document.getElementById('map-f2-left');
+        const mapF2R = document.getElementById('map-f2-right');
+
+        rooms.forEach(id => {
+            const card = document.createElement('div');
+            card.className = 'room-card'; card.id = `room-${id}`;
+            card.innerHTML = `<div class="room-header"><span class="room-id">${id}</span><span class="badge" id="badge-${id}">Libera</span></div><div class="progress-fill"><div class="progress-inner" id="bar-${id}"></div></div><span class="timestamp" id="ts-${id}">In attesa...</span>`;
+            grid.appendChild(card);
+            
+            const mRoom = document.createElement('div');
+            mRoom.className = 'map-room'; mRoom.id = `map-${id}`; mRoom.innerText = id;
+            if(id.startsWith('1')) (parseInt(id) <= 104 ? mapF1L : mapF1R).appendChild(mRoom);
+            else (parseInt(id) <= 202 ? mapF2L : mapF2R).appendChild(mRoom);
+        });
+
+        function renderStaffTable() {
+            const tbody = document.getElementById('staff-table-body');
+            tbody.innerHTML = staffMembers.map(s => `
+                <tr>
+                    <td><strong>${s.name}</strong></td>
+                    <td>Cleaning Unit</td>
+                    <td><span class="staff-status-tag ${s.room ? 'status-active' : 'status-idle'}">${s.room ? 'In servizio' : 'In attesa'}</span></td>
+                    <td id="staff-pos-${s.id}">${s.room ? 'Stanza ' + s.room : '---'}</td>
+                </tr>
+            `).join('');
+        }
+        renderStaffTable();
+
+        function showView(viewId, el) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.querySelectorAll('#nav-operations .nav-item, #nav-system .nav-item').forEach(v => v.classList.remove('active'));
+            document.getElementById('view-' + viewId).classList.add('active');
+            el.classList.add('active');
+            document.getElementById('view-title').innerText = { dashboard: "Dashboard Stanze", mappa: "Mappa Piano", staff: "Gestione Staff", settings: "Impostazioni" }[viewId];
+        }
+
+        function applyFilter(f, el) {
+            document.querySelectorAll('#nav-filters .nav-item').forEach(v => v.classList.remove('active'));
+            el.classList.add('active');
+            document.querySelectorAll('.room-card').forEach(c => {
+                if(f === 'all') c.style.display = 'block';
+                else if(f === 'vacant') c.style.display = (!c.classList.contains('occupied') && !c.classList.contains('cleaning')) ? 'block' : 'none';
+                else if(f === 'occupied') c.style.display = c.classList.contains('occupied') ? 'block' : 'none';
+                else if(f === 'cleaning') c.style.display = c.classList.contains('cleaning') ? 'block' : 'none';
+            });
+        }
+
+        function updateRoom(data) {
+            const { room_id, occupied, staff_present, confidence, ts } = data;
+            const card = document.getElementById(`room-${room_id}`);
+            const mRoom = document.getElementById(`map-${room_id}`);
+            const badge = document.getElementById(`badge-${room_id}`);
+            
+            // Logica COERENZA Staff
+            if (card.classList.contains('cleaning') && !staff_present) {
+                const staff = staffMembers.find(s => s.room === room_id);
+                if (staff) staff.room = null;
+            }
+            if (staff_present && !card.classList.contains('cleaning')) {
+                const freeStaff = staffMembers.find(s => s.room === null);
+                if (freeStaff) freeStaff.room = room_id;
+            }
+
+            card.classList.remove('occupied', 'cleaning');
+            mRoom.classList.remove('occupied', 'cleaning');
+
+            if(staff_present) {
+                card.classList.add('cleaning'); mRoom.classList.add('cleaning');
+                badge.innerText = "Pulizia";
+            } else if(occupied) {
+                card.classList.add('occupied'); mRoom.classList.add('occupied');
+                badge.innerText = "Occupata";
+            } else {
+                badge.innerText = "Libera";
+            }
+
+            document.getElementById(`bar-${room_id}`).style.width = (confidence * 100) + "%";
+            document.getElementById(`ts-${room_id}`).innerText = "Rilevato alle " + new Date(ts).toLocaleTimeString('it-IT', { hour12: false });
+
+            // Refresh Tabelle e Stats
+            renderStaffTable();
+            const occ = document.querySelectorAll('.room-card.occupied').length;
+            const clean = document.querySelectorAll('.room-card.cleaning').length;
+            document.getElementById('stat-occ').innerText = occ;
+            document.getElementById('stat-clean').innerText = clean;
+            document.getElementById('stat-vac').innerText = rooms.length - occ - clean;
+        }
+
+        // Simulatore (MOLTO più dinamico per lo Staff)
+        setInterval(() => {
+            const rid = rooms[Math.floor(Math.random() * rooms.length)];
+            const r = Math.random();
+            const staff = r > 0.70; 
+            const occ = !staff && r > 0.30;
+            updateRoom({
+                "room_id": rid,
+                "occupied": occ,
+                "staff_present": staff,
+                "confidence": (occ || staff) ? (0.80 + Math.random()*0.15) : (0.05 + Math.random()*0.1),
+                "ts": new Date().toISOString()
+            });
+        }, 1000);
+    </script>
+</body>
+</html>
