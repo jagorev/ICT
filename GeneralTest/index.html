@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,10 +17,10 @@
             --accent: #b08d5b;
             --border-color: #ededed;
             
-            /* Colori Stati richiesti */
-            --occupied: #ef6c00; /* Arancione */
-            --vacant: #2e7d32;  /* Verde */
-            --cleaning: #0288d1; /* Blu Staff */
+            /* Required Status Colors */
+            --occupied: #ef6c00; /* Orange */
+            --vacant: #2e7d32;  /* Green */
+            --cleaning: #0288d1; /* Staff Blue */
             
             --sidebar-width: 260px;
         }
@@ -75,22 +75,24 @@
         .stat-item strong { font-size: 1.4rem; font-weight: 600; }
 
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem; }
-        .room-card { background: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 1.5rem; transition: all 0.3s ease; border-top: 4px solid var(--vacant); }
+        .room-card { background: white; border: 1px solid var(--border-color); border-radius: 4px; padding: 1.5rem; transition: all 0.3s ease; border-top: 4px solid var(--vacant); position: relative; }
         .room-card.occupied { border-top: 4px solid var(--occupied); }
         .room-card.cleaning { border-top: 4px solid var(--cleaning); background-color: #f0faff; }
         
+        .room-header { display: flex; justify-content: space-between; align-items: center; }
         .room-id { font-size: 1.4rem; font-weight: 700; }
         .badge { font-size: 0.65rem; font-weight: 700; text-transform: uppercase; padding: 4px 8px; border-radius: 2px; background: #e8f5e9; color: var(--vacant); }
         .room-card.occupied .badge { background: #fff3e0; color: var(--occupied); }
         .room-card.cleaning .badge { background: #e1f5fe; color: var(--cleaning); }
 
-        .progress-fill { height: 4px; background: #eee; width: 100%; margin: 10px 0; position: relative; }
-        .progress-inner { height: 100%; width: 0%; transition: width 0.5s; background: var(--vacant); }
+        .progress-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); margin-top: 15px; margin-bottom: 5px; display: flex; justify-content: space-between;}
+        .progress-fill { height: 6px; background: #eee; width: 100%; border-radius: 3px; overflow: hidden; position: relative; }
+        .progress-inner { height: 100%; width: 0%; transition: width 0.5s ease-out; background: var(--vacant); }
         .occupied .progress-inner { background: var(--occupied); }
         .cleaning .progress-inner { background: var(--cleaning); }
         .timestamp { font-size: 0.7rem; color: var(--text-muted); margin-top: 10px; display: block; }
 
-        /* --- VIEW: MAPPA PIANO --- */
+        /* --- VIEW: FLOOR MAP --- */
         .floor-section { margin-bottom: 4rem; }
         .floor-title { font-size: 0.9rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 1.5rem; border-left: 3px solid var(--accent); padding-left: 10px; }
         .floor-map-container { display: grid; grid-template-columns: 1fr 60px 1fr; gap: 15px; max-width: 600px; }
@@ -101,13 +103,33 @@
         .map-room.cleaning { border-color: var(--cleaning); color: var(--cleaning); background: #e1f5fe; }
 
         /* --- VIEW: STAFF --- */
-        table { width: 100%; border-collapse: collapse; background: white; border: 1px solid var(--border-color); }
+        .staff-header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .btn-add { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 4px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: 0.2s; }
+        .btn-add:hover { background: #96754b; }
+        
+        table { width: 100%; border-collapse: collapse; background: white; border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden;}
         th, td { padding: 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
         th { background: #f9f9f9; font-size: 0.75rem; text-transform: uppercase; color: var(--text-muted); }
         .staff-status-tag { font-size: 0.7rem; font-weight: 700; padding: 4px 8px; border-radius: 4px; }
         .status-active { background: #e1f5fe; color: var(--cleaning); }
         .status-idle { background: #f5f5f5; color: #999; }
+        
+        .action-btns { display: flex; gap: 10px; }
+        .btn-icon { background: none; border: none; cursor: pointer; color: var(--text-muted); transition: 0.2s; }
+        .btn-icon:hover { color: var(--accent); }
+        .btn-delete:hover { color: #d32f2f; }
 
+        /* --- MODAL --- */
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 1000; }
+        .modal-overlay.active { display: flex; }
+        .modal-content { background: white; padding: 2rem; border-radius: 8px; width: 400px; max-width: 90%; }
+        .modal-title { font-size: 1.2rem; font-weight: 700; margin-bottom: 1.5rem; }
+        .form-group { margin-bottom: 1.5rem; }
+        .form-group label { display: block; font-size: 0.8rem; font-weight: 600; margin-bottom: 0.5rem; color: var(--text-muted); }
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; font-family: inherit; }
+        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-cancel { background: #f0f0f0; color: var(--text-main); border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+        
         /* --- VIEW: SETTINGS --- */
         .settings-card { background: white; padding: 20px; border: 1px solid var(--border-color); border-radius: 8px; max-width: 600px; }
         .setting-row { display: flex; justify-content: space-between; align-items: center; padding: 15px 0; border-bottom: 1px solid #f0f0f0; }
@@ -128,34 +150,34 @@
         </div>
         <nav>
             <div class="nav-group" id="nav-operations">
-                <div class="nav-label">Operazioni</div>
-                <div class="nav-item active" onclick="showView('dashboard', this)">
+                <div class="nav-label">Operations</div>
+                <div class="nav-item active" id="nav-dashboard" onclick="showView('dashboard', this)">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                     <span>Dashboard</span>
                 </div>
                 <div class="nav-item" onclick="showView('mappa', this)">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"></path><circle cx="12" cy="10" r="3"></circle></svg>
-                    <span>Mappa Piano</span>
+                    <span>Floor Map</span>
                 </div>
                 <div class="nav-item" onclick="showView('staff', this)">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                    <span>Gestione Staff</span>
+                    <span>Staff Management</span>
                 </div>
             </div>
 
             <div class="nav-group" id="nav-filters">
-                <div class="nav-label">Filtri Dashboard</div>
-                <div class="nav-item active" onclick="applyFilter('all', this)"><span>Mostra Tutte</span></div>
-                <div class="nav-item" onclick="applyFilter('vacant', this)"><span>Libere</span></div>
-                <div class="nav-item" onclick="applyFilter('occupied', this)"><span>Occupate</span></div>
-                <div class="nav-item" onclick="applyFilter('cleaning', this)"><span>In Pulizia</span></div>
+                <div class="nav-label">Dashboard Filters</div>
+                <div class="nav-item active" id="filter-all" onclick="applyFilter('all', this)"><span>Show All</span></div>
+                <div class="nav-item" id="filter-vacant" onclick="applyFilter('vacant', this)"><span>Vacant</span></div>
+                <div class="nav-item" id="filter-occupied" onclick="applyFilter('occupied', this)"><span>Occupied</span></div>
+                <div class="nav-item" id="filter-cleaning" onclick="applyFilter('cleaning', this)"><span>Cleaning</span></div>
             </div>
 
             <div class="nav-group" id="nav-system">
-                <div class="nav-label">Sistema</div>
+                <div class="nav-label">System</div>
                 <div class="nav-item" onclick="showView('settings', this)">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-                    <span>Impostazioni</span>
+                    <span>Settings</span>
                 </div>
             </div>
         </nav>
@@ -165,67 +187,96 @@
     <main>
         <header>
             <div class="page-title">
-                <h2 id="view-title">Dashboard Stanze</h2>
-                <p id="view-desc">Monitoraggio True Presence&trade;</p>
+                <h2 id="view-title">Rooms Dashboard</h2>
+                <p id="view-desc">True Presence&trade; Monitoring</p>
             </div>
             <div class="security-status">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                Connessione Protetta & Criptata
+                Secure & Encrypted Connection
             </div>
         </header>
 
         <section id="view-dashboard" class="view active">
             <div class="dashboard-stats">
-                <div class="stat-item"><span>Monitorate</span><strong id="stat-total">12</strong></div>
-                <div class="stat-item"><span>Occupate</span><strong id="stat-occ" style="color: var(--occupied);">0</strong></div>
-                <div class="stat-item"><span>Libere</span><strong id="stat-vac" style="color: var(--vacant);">12</strong></div>
-                <div class="stat-item"><span>In Pulizia</span><strong id="stat-clean" style="color: var(--cleaning);">0</strong></div>
+                <div class="stat-item"><span>Monitored</span><strong id="stat-total">12</strong></div>
+                <div class="stat-item"><span>Occupied</span><strong id="stat-occ" style="color: var(--occupied);">0</strong></div>
+                <div class="stat-item"><span>Vacant</span><strong id="stat-vac" style="color: var(--vacant);">12</strong></div>
+                <div class="stat-item"><span>Cleaning</span><strong id="stat-clean" style="color: var(--cleaning);">0</strong></div>
             </div>
             <div class="grid" id="room-grid"></div>
         </section>
 
         <section id="view-mappa" class="view">
             <div class="floor-section">
-                <div class="floor-title">Primo Piano (1xx)</div>
-                <div class="floor-map-container"><div class="rooms-side" id="map-f1-left"></div><div class="corridor">Corridoio</div><div class="rooms-side" id="map-f1-right"></div></div>
+                <div class="floor-title">First Floor (1xx)</div>
+                <div class="floor-map-container"><div class="rooms-side" id="map-f1-left"></div><div class="corridor">Corridor</div><div class="rooms-side" id="map-f1-right"></div></div>
             </div>
             <div class="floor-section">
-                <div class="floor-title">Secondo Piano (2xx)</div>
-                <div class="floor-map-container"><div class="rooms-side" id="map-f2-left"></div><div class="corridor">Corridoio</div><div class="rooms-side" id="map-f2-right"></div></div>
+                <div class="floor-title">Second Floor (2xx)</div>
+                <div class="floor-map-container"><div class="rooms-side" id="map-f2-left"></div><div class="corridor">Corridor</div><div class="rooms-side" id="map-f2-right"></div></div>
             </div>
         </section>
 
         <section id="view-staff" class="view">
+            <div class="staff-header-actions">
+                <p>Manage Bluetooth beacons assigned to staff members.</p>
+                <button class="btn-add" onclick="openStaffModal()">+ Add Member</button>
+            </div>
             <table>
-                <thead><tr><th>Operatore</th><th>Ruolo</th><th>Stato</th><th>Stanza Attuale</th></tr></thead>
+                <thead><tr><th>Operator</th><th>Role</th><th>Status</th><th>Current Room</th><th>Actions</th></tr></thead>
                 <tbody id="staff-table-body">
-                    </tbody>
+                    <!-- Populated by JS -->
+                </tbody>
             </table>
         </section>
 
         <section id="view-settings" class="view">
             <div class="settings-card">
-                <div class="setting-row"><span>Notifiche push occupazione</span><label class="toggle"><input type="checkbox" checked><span class="slider"></span></label></div>
-                <div class="setting-row"><span>Modalità risparmio energetico (Auto)</span><label class="toggle"><input type="checkbox" checked><span class="slider"></span></label></div>
-                <div class="setting-row"><span>Rilevamento Staff (BLE Beacon)</span><label class="toggle"><input type="checkbox" checked><span class="slider"></span></label></div>
-                <div class="setting-row"><span>Log criticità hardware</span><label class="toggle"><input type="checkbox"><span class="slider"></span></label></div>
+                <div class="setting-row"><span>Occupancy push notifications</span><label class="toggle"><input type="checkbox" checked><span class="slider"></span></label></div>
+                <div class="setting-row"><span>Energy saving mode (Auto)</span><label class="toggle"><input type="checkbox" checked><span class="slider"></span></label></div>
+                <div class="setting-row"><span>Staff Detection (BLE Beacon)</span><label class="toggle"><input type="checkbox" checked><span class="slider"></span></label></div>
+                <div class="setting-row"><span>Hardware criticality log</span><label class="toggle"><input type="checkbox"><span class="slider"></span></label></div>
             </div>
         </section>
     </main>
 
+    <!-- Staff Modal -->
+    <div class="modal-overlay" id="staff-modal">
+        <div class="modal-content">
+            <h3 class="modal-title" id="modal-title">Add Staff Member</h3>
+            <div class="form-group">
+                <label>Full Name</label>
+                <input type="text" id="staff-name" placeholder="e.g. John Doe">
+            </div>
+            <div class="form-group">
+                <label>Role</label>
+                <select id="staff-role">
+                    <option value="Cleaning Unit">Cleaning Unit</option>
+                    <option value="Maintenance">Maintenance</option>
+                    <option value="Management">Management</option>
+                </select>
+            </div>
+            <input type="hidden" id="staff-edit-id" value="">
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="closeStaffModal()">Cancel</button>
+                <button class="btn-add" onclick="saveStaffMember()">Save</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const rooms = ["101", "102", "103", "104", "105", "106", "107", "108", "201", "202", "203", "204"];
         
-        // Configurazione Staff
-        const staffMembers = [
-            { id: 'marco', name: 'Marco Rossi', room: null },
-            { id: 'elena', name: 'Elena Bianchi', room: null },
-            { id: 'giulia', name: 'Giulia Neri', room: null },
-            { id: 'antonio', name: 'Antonio Russo', room: null },
-            { id: 'sofia', name: 'Sofia Romano', room: null }
+        // Staff Configuration
+        let staffMembers = [
+            { id: 'marco', name: 'Marco Rossi', role: 'Cleaning Unit', room: null },
+            { id: 'elena', name: 'Elena Bianchi', role: 'Cleaning Unit', room: null },
+            { id: 'giulia', name: 'Giulia Neri', role: 'Cleaning Unit', room: null },
+            { id: 'antonio', name: 'Antonio Russo', role: 'Maintenance', room: null },
+            { id: 'sofia', name: 'Sofia Romano', role: 'Management', room: null }
         ];
 
-        // Inizializzazione UI
+        // UI Initialization
         const grid = document.getElementById('room-grid');
         const mapF1L = document.getElementById('map-f1-left');
         const mapF1R = document.getElementById('map-f1-right');
@@ -235,7 +286,20 @@
         rooms.forEach(id => {
             const card = document.createElement('div');
             card.className = 'room-card'; card.id = `room-${id}`;
-            card.innerHTML = `<div class="room-header"><span class="room-id">${id}</span><span class="badge" id="badge-${id}">Libera</span></div><div class="progress-fill"><div class="progress-inner" id="bar-${id}"></div></div><span class="timestamp" id="ts-${id}">In attesa...</span>`;
+            card.innerHTML = `
+                <div class="room-header">
+                    <span class="room-id">${id}</span>
+                    <span class="badge" id="badge-${id}">Vacant</span>
+                </div>
+                <div class="progress-label">
+                    <span>Confidence</span>
+                    <span id="conf-val-${id}">0%</span>
+                </div>
+                <div class="progress-fill">
+                    <div class="progress-inner" id="bar-${id}"></div>
+                </div>
+                <span class="timestamp" id="ts-${id}">Waiting...</span>
+            `;
             grid.appendChild(card);
             
             const mRoom = document.createElement('div');
@@ -244,28 +308,97 @@
             else (parseInt(id) <= 202 ? mapF2L : mapF2R).appendChild(mRoom);
         });
 
+        // --- STAFF MANAGEMENT LOGIC ---
         function renderStaffTable() {
             const tbody = document.getElementById('staff-table-body');
             tbody.innerHTML = staffMembers.map(s => `
                 <tr>
                     <td><strong>${s.name}</strong></td>
-                    <td>Cleaning Unit</td>
-                    <td><span class="staff-status-tag ${s.room ? 'status-active' : 'status-idle'}">${s.room ? 'In servizio' : 'In attesa'}</span></td>
-                    <td id="staff-pos-${s.id}">${s.room ? 'Stanza ' + s.room : '---'}</td>
+                    <td>${s.role}</td>
+                    <td><span class="staff-status-tag ${s.room ? 'status-active' : 'status-idle'}">${s.room ? 'On duty' : 'Waiting'}</span></td>
+                    <td id="staff-pos-${s.id}">${s.room ? 'Room ' + s.room : '---'}</td>
+                    <td class="action-btns">
+                        <button class="btn-icon" onclick="editStaff('${s.id}')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                        <button class="btn-icon btn-delete" onclick="deleteStaff('${s.id}')">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </td>
                 </tr>
             `).join('');
         }
         renderStaffTable();
 
+        function openStaffModal() {
+            document.getElementById('staff-modal').classList.add('active');
+            document.getElementById('staff-name').value = '';
+            document.getElementById('staff-edit-id').value = '';
+            document.getElementById('modal-title').innerText = 'Add Staff Member';
+        }
+
+        function closeStaffModal() {
+            document.getElementById('staff-modal').classList.remove('active');
+        }
+
+        function editStaff(id) {
+            const staff = staffMembers.find(s => s.id === id);
+            if (staff) {
+                document.getElementById('staff-name').value = staff.name;
+                document.getElementById('staff-role').value = staff.role;
+                document.getElementById('staff-edit-id').value = staff.id;
+                document.getElementById('modal-title').innerText = 'Edit Staff Member';
+                document.getElementById('staff-modal').classList.add('active');
+            }
+        }
+
+        function saveStaffMember() {
+            const name = document.getElementById('staff-name').value.trim();
+            const role = document.getElementById('staff-role').value;
+            const editId = document.getElementById('staff-edit-id').value;
+
+            if (!name) return alert("Please enter a name");
+
+            if (editId) {
+                // Update existing
+                const staff = staffMembers.find(s => s.id === editId);
+                if (staff) {
+                    staff.name = name;
+                    staff.role = role;
+                }
+            } else {
+                // Add new
+                const newId = name.toLowerCase().replace(/\s+/g, '') + Math.floor(Math.random() * 1000);
+                staffMembers.push({ id: newId, name: name, role: role, room: null });
+            }
+            
+            closeStaffModal();
+            renderStaffTable();
+        }
+
+        function deleteStaff(id) {
+            if (confirm("Are you sure you want to remove this staff member?")) {
+                staffMembers = staffMembers.filter(s => s.id !== id);
+                renderStaffTable();
+            }
+        }
+
+        // --- NAVIGATION LOGIC ---
         function showView(viewId, el) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.querySelectorAll('#nav-operations .nav-item, #nav-system .nav-item').forEach(v => v.classList.remove('active'));
             document.getElementById('view-' + viewId).classList.add('active');
             el.classList.add('active');
-            document.getElementById('view-title').innerText = { dashboard: "Dashboard Stanze", mappa: "Mappa Piano", staff: "Gestione Staff", settings: "Impostazioni" }[viewId];
+            document.getElementById('view-title').innerText = { dashboard: "Rooms Dashboard", mappa: "Floor Map", staff: "Staff Management", settings: "Settings" }[viewId];
         }
 
         function applyFilter(f, el) {
+            // First jump to Dashboard view if we aren't already there
+            const dashNav = document.getElementById('nav-dashboard');
+            if(!dashNav.classList.contains('active')) {
+                showView('dashboard', dashNav);
+            }
+
             document.querySelectorAll('#nav-filters .nav-item').forEach(v => v.classList.remove('active'));
             el.classList.add('active');
             document.querySelectorAll('.room-card').forEach(c => {
@@ -281,8 +414,9 @@
             const card = document.getElementById(`room-${room_id}`);
             const mRoom = document.getElementById(`map-${room_id}`);
             const badge = document.getElementById(`badge-${room_id}`);
+            const confVal = document.getElementById(`conf-val-${room_id}`);
             
-            // Logica COERENZA Staff
+            // Staff Consistency Logic
             if (card.classList.contains('cleaning') && !staff_present) {
                 const staff = staffMembers.find(s => s.room === room_id);
                 if (staff) staff.room = null;
@@ -297,18 +431,28 @@
 
             if(staff_present) {
                 card.classList.add('cleaning'); mRoom.classList.add('cleaning');
-                badge.innerText = "Pulizia";
+                badge.innerText = "Cleaning";
             } else if(occupied) {
                 card.classList.add('occupied'); mRoom.classList.add('occupied');
-                badge.innerText = "Occupata";
+                badge.innerText = "Occupied";
             } else {
-                badge.innerText = "Libera";
+                badge.innerText = "Vacant";
             }
 
-            document.getElementById(`bar-${room_id}`).style.width = (confidence * 100) + "%";
-            document.getElementById(`ts-${room_id}`).innerText = "Rilevato alle " + new Date(ts).toLocaleTimeString('it-IT', { hour12: false });
+            // Update percentage and bar
+            const percent = Math.round(confidence * 100);
+            document.getElementById(`bar-${room_id}`).style.width = percent + "%";
+            confVal.innerText = percent + "%";
+            
+            document.getElementById(`ts-${room_id}`).innerText = "Detected at " + new Date(ts).toLocaleTimeString('en-US', { hour12: false });
 
-            // Refresh Tabelle e Stats
+            // Refresh filter display if needed
+            const currentFilter = document.querySelector('#nav-filters .nav-item.active').id.replace('filter-', '');
+            if(currentFilter !== 'all') {
+                applyFilter(currentFilter, document.getElementById('filter-' + currentFilter));
+            }
+
+            // Refresh Tables and Stats
             renderStaffTable();
             const occ = document.querySelectorAll('.room-card.occupied').length;
             const clean = document.querySelectorAll('.room-card.cleaning').length;
@@ -317,7 +461,7 @@
             document.getElementById('stat-vac').innerText = rooms.length - occ - clean;
         }
 
-        // Simulatore (MOLTO più dinamico per lo Staff)
+        // Simulator (MUCH more dynamic for Staff)
         setInterval(() => {
             const rid = rooms[Math.floor(Math.random() * rooms.length)];
             const r = Math.random();
