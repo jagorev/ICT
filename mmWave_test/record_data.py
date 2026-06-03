@@ -7,62 +7,54 @@ try:
     esp32 = serial.Serial()
     esp32.port = 'COM7'
     esp32.baudrate = 115200
-    
-    # CRITICAL FIX 1: Add a 1-second timeout. 
-    # This prevents Python from waiting forever and freezing your terminal!
     esp32.timeout = 1  
     
     esp32.open()
-    
-    # CRITICAL FIX 2: Tell the ESP32 Native USB that a terminal is open and ready.
-    # Without this, the ESP32-S3 won't send any data over the USB-C cable.
     esp32.setDTR(True)
     esp32.setRTS(False)
     
     print("Connected successfully!")
     print("Recording data. Press Ctrl+C to stop...\n")
-    print("-" * 55)
+    print("-" * 75)
 
     with open('radar_data.csv', 'w') as file:
+        # Write CSV Headers
+        file.write("Presence,Distance_m,ActiveGate,MaxEnergy\n")
+        
         while True:
-            # Read the line (will give up and move on after 1 second if empty)
             line_bytes = esp32.readline()
-            
-            # If no data came through in the last second, just loop again
             if not line_bytes:
                 continue
                 
             line = line_bytes.decode('utf-8', errors='ignore').strip()
-            
-            if not line:
+            if not line or "ESP32" in line:
                 continue
 
-            # 1. SAVE TO FILE
+            # 1. SAVE RAW DATA TO CSV
             file.write(line + '\n')
             file.flush() 
 
-            # 2. PRINT TO TERMINAL
+            # 2. PRINT VISUAL DASHBOARD
             parts = line.split(',')
             
-            if len(parts) == 3 and parts[0].isdigit():
-                macro = parts[0]
-                micro = parts[1]
+            if len(parts) == 4:
+                presence_val = parts[0]
+                distance = parts[1]
+                gate = parts[2]
+                energy = parts[3]
                 
-                if parts[2] == '1':
-                    presence = "YES 🔴"
-                else:
-                    presence = "NO  ⚪"
+                presence_str = "YES 🔴" if presence_val == '1' else "NO  ⚪"
                     
-                print(f"Macro Energy: {macro:<5} | Micro Energy: {micro:<5} | Presence: {presence}")
+                print(f"Presence: {presence_str} | Target Dist: {distance}m | Highest Energy: {energy:<5} (at Gate {gate})")
             else:
                 print(f"> {line}")
 
 except serial.SerialException as e:
     print(f"\nSerial Error: {e}")
-    print("TIP: Make sure the PlatformIO Serial Monitor is completely closed!")
+    print("TIP: Is the PlatformIO terminal definitely closed?")
 except KeyboardInterrupt:
-    print("\n" + "-" * 55)
-    print("Recording stopped safely. Your 'radar_data.csv' file is ready!")
+    print("\n" + "-" * 75)
+    print("Recording stopped safely.")
 finally:
     if 'esp32' in locals() and esp32.is_open:
         esp32.close()
