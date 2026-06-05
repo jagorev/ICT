@@ -12,5 +12,7 @@
 // #include "mqtt_local_client.h"
 // #include "ble_server.h"
 // #include "ble_client.h"
-#include "espnow_range_client.h"
+//#include "espnow_range_client.h"
 // #include "espnow_range_server.h"
+#include "ble_janitor_tag.h"
+//#include "ble_room_scanner.h"
