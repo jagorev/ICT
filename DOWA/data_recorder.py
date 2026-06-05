@@ -4,7 +4,7 @@ import csv
 from datetime import datetime
 
 # --- CONFIGURATION ---
-SERIAL_PORT = 'COM3'  # <-- Double check this!
+SERIAL_PORT = 'COM7'  # <-- Double check this!
 BAUD_RATE = 115200
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,9 +20,9 @@ try:
     with open(CSV_FILENAME, mode='a', newline='') as file:
         writer = csv.writer(file)
         
-        # Write headers if the file is new (Removed manual Ground Truth)
+        # Write headers if the file is new
         if os.stat(CSV_FILENAME).st_size == 0:
-            writer.writerow(["Timestamp", "mmWave_State", "mmWave_Distance_m", "SGP30_TVOC_ppb", "SGP30_eCO2_ppm"])
+            writer.writerow(["Timestamp", "mmWave_State", "mmWave_Distance_m", "SGP30_TVOC_ppb", "SGP30_eCO2_ppm", "PIR_State", "Ground_Truth"])
             file.flush()
 
         while True:
@@ -31,22 +31,21 @@ try:
 
                 if " | CSV:" in line:
                     dashboard_text, csv_data = line.split(" | CSV:")
-                    
-                    # Print the nice dashboard to the terminal
                     print(dashboard_text)
 
-                    # Parse the raw ML variables
+                    # Now parsing 5 variables!
                     data = csv_data.split(',')
-                    if len(data) == 4:
+                    if len(data) == 5:
                         state = data[0].strip()
                         distance = data[1].strip()
                         tvoc = data[2].strip()
                         eco2 = data[3].strip()
+                        pir = data[4].strip()  # <--- NEW PIR DATA
                         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-                        # Save everything to CSV
-                        writer.writerow([timestamp, state, distance, tvoc, eco2])
-                        file.flush() # Force save to disk
+                        # Save everything + Ground Truth
+                        writer.writerow([timestamp, state, distance, tvoc, eco2, pir, state])  # Using mmWave state as implicit Ground Truth
+                        file.flush()
                 else:
                     print(line)
 
