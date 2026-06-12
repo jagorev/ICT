@@ -10,7 +10,8 @@ uint8_t masterAddress[] = {0xA0, 0x85, 0xE3, 0xE3, 0x5B, 0xAC};
 
 // The data structure we will send to the Master
 typedef struct struct_message {
-  bool isMotionDetected; 
+  uint8_t room_id;          // <-- NEW: The Room ID badge
+  bool isMotionDetected;
 } struct_message;
 
 struct_message myData;
@@ -46,6 +47,8 @@ void setup() {
 void loop() {
   // Read the PIR sensor
   bool currentPIRState = digitalRead(PIR_PIN);
+  // Inside the Slave's loop():
+  myData.room_id = 4;         // <-- NEW: Stamp the packet as Room 4
   myData.isMotionDetected = currentPIRState;
 
   // Send the message via ESP-NOW
