@@ -1,6 +1,10 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include "Adafruit_SGP30.h"
+#include <BLEDevice.h>
+#include <BLEUtils.h>
+#include <BLEScan.h>
+#include <BLEAdvertisedDevice.h>
 
 /*
   MOD/DOWA Fusion Template - Functional Implementation
@@ -8,6 +12,7 @@
   - mmWave LD2410 radar (UART)
   - PIR sensor (GPIO digital)
   - SGP30 air quality (I2C)
+  - BLE Scanner for Janitor Override
 */
 
 // ============================================================================
@@ -22,16 +27,16 @@ HardwareSerial radarSerial(1);
 // PIR Sensor (GPIO)
 #define PIR_PIN 13
 
-// SGP30 (I2C)
-#define I2C_SDA_PIN 8
-#define I2C_SCL_PIN 9
+// SGP30 (I2C) - Usa pin normali per ESP32
+#define I2C_SDA_PIN 21 
+#define I2C_SCL_PIN 22
 Adafruit_SGP30 sgp30;
 
 // mmWave packet parsing state
 const uint8_t RADAR_HEADER[4] = {0xF4, 0xF3, 0xF2, 0xF1};
 int radarHeaderCount = 0;
 uint8_t radarPacket[64];
-int radarPacketLen = 0;
+int radarPacket_len = 0;
 bool radarReadingPacket = false;
 uint8_t lastRadarPresence = 0; // LD2410 state: 0=None, 1=Moving, 2=Stationary, 3=Both
 unsigned long lastRadarReadTime = 0;
@@ -43,6 +48,30 @@ uint16_t lasteCO2 = 400;
 
 // PIR State
 unsigned long lastPirTriggerTime = 0;
+
+// BLE Janitor Override State
+#define JANITOR_TAG_NAME "JANITOR_TAG"
+BLEScan* pBLEScan;
+bool staff_present = false;
+unsigned long lastStaffDetectTime = 0;
+const int RSSI_THRESHOLD = -60; // RSSI threshold for proximity sensing (adjust as needed)
+const unsigned long DEPARTURE_TIMEOUT = 10000; // 10 seconds of no detection to clear flag
+bool saved_occupancy_state = false; // State to freeze when staff enters
+
+class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
+    void onResult(BLEAdvertisedDevice advertisedDevice) {
+        if (advertisedDevice.haveName() && advertisedDevice.getName() == JANITOR_TAG_NAME) {
+            int rssi = advertisedDevice.getRSSI();
+            if (rssi > RSSI_THRESHOLD) {
+                lastStaffDetectTime = millis();
+                if (!staff_present) {
+                    staff_present = true;
+                    Serial.printf("\n[BLE] STAFF TAG DETECTED! RSSI: %d - FREEZING STATE\n", rssi);
+                }
+            }
+        }
+    }
+};
 
 struct MassFunction {
   float occupied;
@@ -187,14 +216,14 @@ static void processRadarData() {
           radarPacket[1] = 0xF3;
           radarPacket[2] = 0xF2;
           radarPacket[3] = 0xF1;
-          radarPacketLen = 4;
+          radarPacket_len = 4;
           radarHeaderCount = 0;
         }
       } else {
         radarHeaderCount = 0;
       }
     } else {
-      radarPacket[radarPacketLen] = b;
+      radarPacket[radarPacket_len] = b;
       radarPacket_len++;
 
       if(radarPacket_len >= 4 && 
@@ -260,6 +289,19 @@ void setup() {
   Serial.begin(115200);
   delay(2000);
   Serial.println("\n=== MOD/DOWA Fusion Engine - Functional ===\n");
+
+  // Inizializza il BLE Scanner
+  BLEDevice::init("");
+  pBLEScan = BLEDevice::getScan();
+  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(), true);
+  pBLEScan->setActiveScan(true);
+  pBLEScan->setInterval(100);
+  pBLEScan->setWindow(99);
+  
+  // ---> AGGIUNGI QUESTA RIGA <---
+  pBLEScan->start(0, nullptr, false); 
+  
+  Serial.println("[BLE] Scanner Initialized and Listening!");
   
   pinMode(PIR_PIN, INPUT);
   Serial.println("[PIR] Initialized on GPIO " + String(PIR_PIN));
@@ -282,8 +324,7 @@ void setup() {
   delay(500);
   
   if (!sgp30.begin(&Wire)) {
-    Serial.println("[SGP30] ERROR: Sensor not found!");
-    while(1) { delay(100); }
+    Serial.println("[SGP30] ERROR: Sensor not found! (Continuing anyway...)");
   }
   
   Serial.print("[SGP30] Found serial #");
@@ -298,13 +339,31 @@ void setup() {
 void loop() {
   static unsigned long lastFusionMs = 0;
 
+  // Lancia la scansione BLE in modo non bloccante (se non sta già scansionando internamente)
+
+  // Verifica il timeout del tag del personale (se è uscito dalla stanza)
+  if (staff_present && (millis() - lastStaffDetectTime > DEPARTURE_TIMEOUT)) {
+      staff_present = false;
+      Serial.println("\n[BLE] STAFF DEPARTED! Tag Timeout elapsed. Resuming normal operations.\n");
+  }
+
   if (millis() - lastFusionMs < 1000) {
     return;
   }
   lastFusionMs = millis();
 
   const SensorEvidence evidence = readSensorsTemplate();
-  const FusionResult result = runDOWA_DST_Fusion(evidence);
+  FusionResult result = runDOWA_DST_Fusion(evidence);
+
+  // LOGICA FREEZE STAFF TAG OVERRIDE
+  if (staff_present) {
+      // Quando lo staff è presente, freeza lo stato ripristinandolo al salvato (o gestendo l'override)
+      // Manteniamo i vecchi valori di beliefs, oppure ignoriamo il check finale
+      result.occupied = saved_occupancy_state; 
+  } else {
+      // Salva lo stato in caso entri lo staff
+      saved_occupancy_state = result.occupied;
+  }
 
   Serial.print("[");
   Serial.print(millis() / 1000);
@@ -320,12 +379,17 @@ void loop() {
   Serial.print(evidence.eco2);
   Serial.print("ppm | ");
   
-  Serial.print("m(O)=");
-  Serial.print(result.occupiedBelief, 3);
-  Serial.print(" m(E)=");
-  Serial.print(result.emptyBelief, 3);
-  Serial.print(" | K=");
-  Serial.print(result.conflictK, 3);
+  if (staff_present) {
+    Serial.print(" [STAFF OVERRIDE FREEZE] ");
+  } else {
+    Serial.print("m(O)=");
+    Serial.print(result.occupiedBelief, 3);
+    Serial.print(" m(E)=");
+    Serial.print(result.emptyBelief, 3);
+    Serial.print(" | K=");
+    Serial.print(result.conflictK, 3);
+  }
+  
   Serial.print(" | ");
   Serial.println(result.occupied ? ">>> OCCUPIED <<<" : "EMPTY");
 }
