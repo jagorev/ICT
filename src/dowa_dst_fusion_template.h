@@ -1,18 +1,16 @@
+#ifndef DOWA_DST_FUSION_TEMPLATE_H
+#define DOWA_DST_FUSION_TEMPLATE_H
+
 #include <Arduino.h>
 #include <Wire.h>
 #include "Adafruit_SGP30.h"
-#include <BLEDevice.h>
-#include <BLEUtils.h>
-#include <BLEScan.h>
-#include <BLEAdvertisedDevice.h>
 
 /*
   MOD/DOWA Fusion Template - Functional Implementation
   Integrates real sensor reads:
   - mmWave LD2410 radar (UART)
-  - PIR sensor (GPIO digital)
+  - PIR sensor (GPIO digital) - Note: Master overrides this with ESP-NOW data
   - SGP30 air quality (I2C)
-  - BLE Scanner for Janitor Override
 */
 
 // ============================================================================
@@ -24,7 +22,7 @@
 #define RADAR_TX_PIN 17
 HardwareSerial radarSerial(1);
 
-// PIR Sensor (GPIO)
+// PIR Sensor (GPIO) - Kept for compatibility, but ESP-NOW overrides it
 #define PIR_PIN 13
 
 // SGP30 (I2C) - Usa pin normali per ESP32
@@ -49,29 +47,9 @@ uint16_t lasteCO2 = 400;
 // PIR State
 unsigned long lastPirTriggerTime = 0;
 
-// BLE Janitor Override State
-#define JANITOR_TAG_NAME "JANITOR_TAG"
-BLEScan* pBLEScan;
-bool staff_present = false;
-unsigned long lastStaffDetectTime = 0;
-const int RSSI_THRESHOLD = -60; // RSSI threshold for proximity sensing (adjust as needed)
-const unsigned long DEPARTURE_TIMEOUT = 10000; // 10 seconds of no detection to clear flag
-bool saved_occupancy_state = false; // State to freeze when staff enters
-
-class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
-    void onResult(BLEAdvertisedDevice advertisedDevice) {
-        if (advertisedDevice.haveName() && advertisedDevice.getName() == JANITOR_TAG_NAME) {
-            int rssi = advertisedDevice.getRSSI();
-            if (rssi > RSSI_THRESHOLD) {
-                lastStaffDetectTime = millis();
-                if (!staff_present) {
-                    staff_present = true;
-                    Serial.printf("\n[BLE] STAFF TAG DETECTED! RSSI: %d - FREEZING STATE\n", rssi);
-                }
-            }
-        }
-    }
-};
+// ============================================================================
+// DOWA-DST STRUCTURES & MATH (100% YOUR TEAM'S CODE)
+// ============================================================================
 
 struct MassFunction {
   float occupied;
@@ -105,7 +83,6 @@ static constexpr float w_pir = 0.35f;    // PIR sensor weight
 static constexpr float w_air = 0.15f;    // Air quality weight
 
 static MassFunction makeRadarMass(uint8_t radarState) {
-  // radarState: 0=none, 1=stationary, 2=moving
   switch(radarState) {
     case 2: return {0.95f, 0.00f, 0.05f}; // moving
     case 1: return {0.85f, 0.00f, 0.15f}; // stationary/breathing
@@ -117,7 +94,6 @@ static MassFunction makePirMass(bool motion, uint32_t msSinceLastTrigger) {
   if (motion) return {0.90f, 0.00f, 0.10f};
   if (msSinceLastTrigger < 30000)  return {0.75f, 0.00f, 0.25f}; // hold
   if (msSinceLastTrigger < 120000) {
-    // linear decay of m(O) toward 0, m(U) toward 1.0
     float ratio = 1.0f - ((msSinceLastTrigger - 30000.0f) / 90000.0f);
     return {0.75f * ratio, 0.00f, 1.0f - (0.75f * ratio)};
   }
@@ -137,12 +113,8 @@ static MassFunction makeAirMass(uint16_t tvoc, uint16_t eco2) {
 static MassFunction combineTwo(const MassFunction &a, const MassFunction &b, float &outK) {
   const float k = (a.occupied * b.empty) + (a.empty * b.occupied);
   outK = k;
-  
   const float safeDenominator = 1.0f - k;
-
-  if (safeDenominator <= 0.0001f) {
-    return {0.0f, 0.0f, 1.0f};
-  }
+  if (safeDenominator <= 0.0001f) return {0.0f, 0.0f, 1.0f};
 
   MassFunction result;
   result.occupied = ((a.occupied * b.occupied) + (a.occupied * b.unknown) + (a.unknown * b.occupied)) / safeDenominator;
@@ -168,15 +140,12 @@ static MassFunction combineEvidence(const SensorEvidence &evidence, float &outMa
   
   float k = 0.0f;
   float maxK = 0.0f;
-  
   MassFunction combined = m_dowa;
   
   combined = combineTwo(combined, radarMass, k);
   maxK = max(maxK, k);
-  
   combined = combineTwo(combined, pirMass, k);
   maxK = max(maxK, k);
-  
   combined = combineTwo(combined, airMass, k);
   maxK = max(maxK, k);
   
@@ -203,6 +172,10 @@ static FusionResult runDOWA_DST_Fusion(const SensorEvidence &evidence) {
   return result;
 }
 
+// ============================================================================
+// HARDWARE PARSING (100% YOUR TEAM'S CODE)
+// ============================================================================
+
 static void processRadarData() {
   while(radarSerial.available()) {
     uint8_t b = radarSerial.read();
@@ -212,44 +185,28 @@ static void processRadarData() {
         radarHeaderCount++;
         if(radarHeaderCount == 4) {
           radarReadingPacket = true;
-          radarPacket[0] = 0xF4;
-          radarPacket[1] = 0xF3;
-          radarPacket[2] = 0xF2;
-          radarPacket[3] = 0xF1;
+          radarPacket[0] = 0xF4; radarPacket[1] = 0xF3; radarPacket[2] = 0xF2; radarPacket[3] = 0xF1;
           radarPacket_len = 4;
           radarHeaderCount = 0;
         }
-      } else {
-        radarHeaderCount = 0;
-      }
+      } else { radarHeaderCount = 0; }
     } else {
       radarPacket[radarPacket_len] = b;
       radarPacket_len++;
 
-      if(radarPacket_len >= 4 && 
-         radarPacket[radarPacket_len-4] == 0xF8 && 
-         radarPacket[radarPacket_len-3] == 0xF7 && 
-         radarPacket[radarPacket_len-2] == 0xF6 && 
-         radarPacket[radarPacket_len-1] == 0xF5) {
-        
+      if(radarPacket_len >= 4 && radarPacket[radarPacket_len-4] == 0xF8 && radarPacket[radarPacket_len-3] == 0xF7 && radarPacket[radarPacket_len-2] == 0xF6 && radarPacket[radarPacket_len-1] == 0xF5) {
         lastRadarPresence = radarPacket[6]; // LD2410 byte 6: 0=None, 1=Moving, 2=Stationary, 3=Both
         lastRadarReadTime = millis();
         radarReadingPacket = false;
       }
-
-      if(radarPacket_len >= 64) {
-        radarReadingPacket = false;
-      }
+      if(radarPacket_len >= 64) radarReadingPacket = false;
     }
   }
 }
 
 static void processSGP30Data() {
   unsigned long now = millis();
-  
-  if (now - lastSGP30ReadTime < 1000) {
-    return;
-  }
+  if (now - lastSGP30ReadTime < 1000) return;
   lastSGP30ReadTime = now;
   
   if (sgp30.IAQmeasure()) {
@@ -264,19 +221,18 @@ static SensorEvidence readSensorsTemplate() {
   
   SensorEvidence evidence;
   
-  evidence.pirMotion = digitalRead(PIR_PIN);
+  evidence.pirMotion = digitalRead(PIR_PIN); // Will be overridden by main.cpp if ESP-NOW is active
   if (evidence.pirMotion) {
     lastPirTriggerTime = millis();
   }
-  evidence.msSinceLastPirTrigger = millis() - (lastPirTriggerTime > 0 ? lastPirTriggerTime : millis()); // Prevent overflow on startup buffer
+  evidence.msSinceLastPirTrigger = millis() - (lastPirTriggerTime > 0 ? lastPirTriggerTime : millis()); 
   
-  // LD2410 parsing logic maps nicely:
   if (lastRadarPresence == 1 || lastRadarPresence == 3) {
-      evidence.radarState = 2; // Moving/Both -> 2 (Moving)
+      evidence.radarState = 2; // Moving
   } else if (lastRadarPresence == 2) {
-      evidence.radarState = 1; // Stationary -> 1 (Stationary)
+      evidence.radarState = 1; // Stationary
   } else {
-      evidence.radarState = 0; // None -> 0
+      evidence.radarState = 0; // None
   }
   
   evidence.tvoc = lastTVOC;
@@ -285,24 +241,10 @@ static SensorEvidence readSensorsTemplate() {
   return evidence;
 }
 
-void setup() {
-  Serial.begin(115200);
-  delay(2000);
-  Serial.println("\n=== MOD/DOWA Fusion Engine - Functional ===\n");
-
-  // Inizializza il BLE Scanner
-  BLEDevice::init("");
-  pBLEScan = BLEDevice::getScan();
-  pBLEScan->setAdvertisedDeviceCallbacks(new MyAdvertisedDeviceCallbacks(), true);
-  pBLEScan->setActiveScan(true);
-  pBLEScan->setInterval(100);
-  pBLEScan->setWindow(99);
-  
-  // ---> AGGIUNGI QUESTA RIGA <---
-  pBLEScan->start(0, nullptr, false); 
-  
-  Serial.println("[BLE] Scanner Initialized and Listening!");
-  
+// ============================================================================
+// DOWA HARDWARE SETUP (RENAMED SO IT DOESN'T CONFLICT WITH MAIN.CPP)
+// ============================================================================
+void setup_dowa_sensors() {
   pinMode(PIR_PIN, INPUT);
   Serial.println("[PIR] Initialized on GPIO " + String(PIR_PIN));
   
@@ -310,11 +252,8 @@ void setup() {
   delay(500);
   
   const byte REPORT_MODE_CMD[] = {
-    0xFD, 0xFC, 0xFB, 0xFA,
-    0x08, 0x00,
-    0x12, 0x00, 0x00, 0x00,
-    0x04, 0x00, 0x00, 0x00,
-    0x04, 0x03, 0x02, 0x01
+    0xFD, 0xFC, 0xFB, 0xFA, 0x08, 0x00, 0x12, 0x00, 0x00, 0x00,
+    0x04, 0x00, 0x00, 0x00, 0x04, 0x03, 0x02, 0x01
   };
   radarSerial.write(REPORT_MODE_CMD, sizeof(REPORT_MODE_CMD));
   delay(100);
@@ -325,71 +264,11 @@ void setup() {
   
   if (!sgp30.begin(&Wire)) {
     Serial.println("[SGP30] ERROR: Sensor not found! (Continuing anyway...)");
+  } else {
+    Serial.print("[SGP30] Found serial #");
+    Serial.print(sgp30.serialnumber[0], HEX);
+    Serial.println(sgp30.serialnumber[2], HEX);
   }
-  
-  Serial.print("[SGP30] Found serial #");
-  Serial.print(sgp30.serialnumber[0], HEX);
-  Serial.print(sgp30.serialnumber[1], HEX);
-  Serial.println(sgp30.serialnumber[2], HEX);
-  
-  Serial.println("\n[FUSION] Warming up... (1Hz measurement cycle)\n");
-  Serial.println("========================================");
 }
 
-void loop() {
-  static unsigned long lastFusionMs = 0;
-
-  // Lancia la scansione BLE in modo non bloccante (se non sta già scansionando internamente)
-
-  // Verifica il timeout del tag del personale (se è uscito dalla stanza)
-  if (staff_present && (millis() - lastStaffDetectTime > DEPARTURE_TIMEOUT)) {
-      staff_present = false;
-      Serial.println("\n[BLE] STAFF DEPARTED! Tag Timeout elapsed. Resuming normal operations.\n");
-  }
-
-  if (millis() - lastFusionMs < 1000) {
-    return;
-  }
-  lastFusionMs = millis();
-
-  const SensorEvidence evidence = readSensorsTemplate();
-  FusionResult result = runDOWA_DST_Fusion(evidence);
-
-  // LOGICA FREEZE STAFF TAG OVERRIDE
-  if (staff_present) {
-      // Quando lo staff è presente, freeza lo stato ripristinandolo al salvato (o gestendo l'override)
-      // Manteniamo i vecchi valori di beliefs, oppure ignoriamo il check finale
-      result.occupied = saved_occupancy_state; 
-  } else {
-      // Salva lo stato in caso entri lo staff
-      saved_occupancy_state = result.occupied;
-  }
-
-  Serial.print("[");
-  Serial.print(millis() / 1000);
-  Serial.print("s] ");
-  
-  Serial.print("RADAR=");
-  Serial.print(evidence.radarState);
-  Serial.print(" PIR=");
-  Serial.print(evidence.pirMotion ? "1" : "0");
-  Serial.print(" TVOC=");
-  Serial.print(evidence.tvoc);
-  Serial.print("ppb eCO2=");
-  Serial.print(evidence.eco2);
-  Serial.print("ppm | ");
-  
-  if (staff_present) {
-    Serial.print(" [STAFF OVERRIDE FREEZE] ");
-  } else {
-    Serial.print("m(O)=");
-    Serial.print(result.occupiedBelief, 3);
-    Serial.print(" m(E)=");
-    Serial.print(result.emptyBelief, 3);
-    Serial.print(" | K=");
-    Serial.print(result.conflictK, 3);
-  }
-  
-  Serial.print(" | ");
-  Serial.println(result.occupied ? ">>> OCCUPIED <<<" : "EMPTY");
-}
+#endif
