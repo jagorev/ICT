@@ -705,7 +705,6 @@ function BootScreen({ onComplete }: { onComplete: () => void }) {
 
 function ControlPanel() {
   const [temp, setTemp] = useState(22);
-  const [roomStatus, setRoomStatus] = useState<RoomStatus>("guest");
   const [showOccupancyFullscreen, setShowOccupancyFullscreen] = useState(false);
   const [lightsOn, setLightsOn] = useState(true);
   const [brightness, setBrightness] = useState(70);
@@ -713,6 +712,11 @@ function ControlPanel() {
   const [fanSpeed, setFanSpeed] = useState<"low" | "med" | "high">("med");
   const [currentTime, setCurrentTime] = useState(new Date());
   const [manualOverride, setManualOverride] = useState(false);
+  const [roomStatus, setRoomStatus] = useState<RoomStatus>("empty");
+  const [bleJanitorPresent, setBleJanitorPresent] = useState(false);
+  const [bleJanitorRssi, setBleJanitorRssi] = useState(-100);
+  const [pirNodeStatus, setPirNodeStatus] = useState("OFFLINE");
+  const [pirMotion, setPirMotion] = useState(false);
 
   useEffect(() => {
     const interval = setInterval(() => setCurrentTime(new Date()), 1000);
@@ -731,6 +735,10 @@ function ControlPanel() {
         if (data.status && ["empty", "guest", "staff"].includes(data.status)) {
           setRoomStatus(data.status as RoomStatus);
         }
+        if (data.ble_janitor_present !== undefined) setBleJanitorPresent(data.ble_janitor_present);
+        if (data.ble_janitor_rssi !== undefined) setBleJanitorRssi(data.ble_janitor_rssi);
+        if (data.pir_node_status !== undefined) setPirNodeStatus(data.pir_node_status);
+        if (data.pir_motion !== undefined) setPirMotion(data.pir_motion);
       } catch {
         // malformed payload — ignore
       }
@@ -952,14 +960,14 @@ function ControlPanel() {
             {[
               { label: "Network", value: "Online", ok: true },
               { label: "BMS Link", value: "Active", ok: true },
-              { label: "FindMe", value: "Synced", ok: true },
-              { label: "Audio", value: "Muted", ok: false },
+              { label: "PIR Node", value: pirNodeStatus + (pirNodeStatus === "ONLINE" ? (pirMotion ? " (MOTION)" : " (STILL)") : ""), ok: pirNodeStatus === "ONLINE" },
+              { label: "BLE Scanner", value: bleJanitorPresent ? `Staff (${bleJanitorRssi}dBm)` : "Idle", ok: true },
             ].map(item => (
               <div key={item.label} className="flex items-center justify-between">
                 <span style={{ fontFamily: "'Inter', sans-serif", fontSize: "10px", color: "#6b7fa0" }}>{item.label}</span>
                 <div className="flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: item.ok ? "#00e87a" : "#6b7fa0" }} />
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: item.ok ? "#00e87a" : "#3a4a60" }}>{item.value}</span>
+                  <div className="w-1.5 h-1.5 rounded-full" style={{ background: item.ok ? (item.label === "PIR Node" && pirMotion ? "#00c8e8" : "#00e87a") : "#e84a5f" }} />
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "9px", color: item.ok ? (item.label === "PIR Node" && pirMotion ? "#00c8e8" : "#00e87a") : "#e84a5f" }}>{item.value}</span>
                 </div>
               </div>
             ))}

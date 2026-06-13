@@ -35,11 +35,17 @@ struct_message incomingData;
 
 // Catch ESP-NOW Packets
 void OnDataRecv(const uint8_t * mac, const uint8_t *incomingDataBytes, int len) {
+  Serial.printf("[ESP-NOW] Packet from %02X:%02X:%02X:%02X:%02X:%02X | len: %d (expected %d)\n",
+                 mac[0], mac[1], mac[2], mac[3], mac[4], mac[5], len, sizeof(incomingData));
+                 
   if (len == sizeof(incomingData)) {
     memcpy(&incomingData, incomingDataBytes, sizeof(incomingData));
     pirPresence = incomingData.isMotionDetected;
     lastPIRUpdate = millis(); 
     isSlaveOnline = true;
+    Serial.printf("[ESP-NOW] SUCCESS! PIR Status: %s | Room ID: %d\n", pirPresence ? "MOTION" : "STILL", incomingData.room_id);
+  } else {
+    Serial.println("[ESP-NOW] ERROR: Payload size mismatch. Packet dropped.");
   }
 }
 
@@ -68,6 +74,13 @@ void setup_network_and_memory() {
   Serial.println(WiFi.macAddress());
   WiFi.begin(ssid, password);
   
+  // Wait a bit to connect so we can log the channel
+  unsigned long startAttempt = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 5000) {
+    delay(100);
+  }
+  Serial.printf("[NETWORK] Connected to Wi-Fi. Channel: %d\n", WiFi.channel());
+  
   mqttClient.setServer(mqtt_server, 1883);
   mqttClient.setCallback(mqttCallback);
 
@@ -93,20 +106,24 @@ void loop_network() {
   }
 
   // Slave Health Monitor
-  if (millis() - lastPIRUpdate > 10000) {
+  if (isSlaveOnline && (millis() - lastPIRUpdate > 10000)) {
     isSlaveOnline = false;
     pirPresence = false;
+    Serial.println("[ESP-NOW] WARNING: PIR Slave Node has gone OFFLINE! (No packets for 10s)");
   }
 }
 
 // Data Publisher
-void publish_data_to_mqtt(bool isOccupied, String roomStatus) {
+void publish_data_to_mqtt(bool isOccupied, String roomStatus, bool bleJanitorPresent = false, int bleJanitorRssi = -100) {
     if (mqttClient.connected()) {
       StaticJsonDocument<256> doc;
       doc["room_id"] = currentRoomID;
       doc["status"] = roomStatus;      
       doc["is_occupied"] = isOccupied; 
       doc["pir_node_status"] = isSlaveOnline ? "ONLINE" : "OFFLINE";
+      doc["pir_motion"] = pirPresence;
+      doc["ble_janitor_present"] = bleJanitorPresent;
+      doc["ble_janitor_rssi"] = bleJanitorRssi;
 
       char jsonBuffer[256];
       serializeJson(doc, jsonBuffer);
