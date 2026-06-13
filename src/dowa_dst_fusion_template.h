@@ -9,6 +9,7 @@
 #include <BLEUtils.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
+#include "metrics.h"
 
 /*
   MOD/DOWA Fusion Template - Functional Implementation
@@ -17,6 +18,7 @@
   - PIR sensor (GPIO digital)
   - SGP30 air quality (I2C)
   - BLE Scanner for Janitor Override
+  - On-device metrics tracking (accuracy, precision, recall, F1, FNR, FPR)
 */
 
 // ============================================================================
@@ -51,8 +53,6 @@ unsigned long lastSGP30ReadTime = 0;
 uint16_t lastTVOC = 0;
 uint16_t lasteCO2 = 400;
 
-// ... (skipping to processSGP30Data) ...
-
 // PIR State
 unsigned long lastPirTriggerTime = 0;
 
@@ -66,6 +66,12 @@ const unsigned long DEPARTURE_TIMEOUT = 10000; // 10 seconds of no detection to 
 bool saved_occupancy_state = false; // State to freeze when staff enters
 
 int current_staff_rssi = -100;
+
+// ============================================================================
+// METRICS STATE
+// ============================================================================
+ConfusionMatrix cm;
+bool groundTruthOccupied = false; // updated via Serial command ('1'/'0')
 
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     void onResult(BLEAdvertisedDevice advertisedDevice) {
@@ -307,6 +313,28 @@ static SensorEvidence readSensorsTemplate() {
   return evidence;
 }
 
+// ============================================================================
+// METRICS: GROUND TRUTH INPUT VIA SERIAL
+// ============================================================================
+// Send '1' = mark room as OCCUPIED (ground truth)
+// Send '0' = mark room as EMPTY (ground truth)
+// Send 'p' = print confusion matrix + metrics snapshot
+// ============================================================================
+static void checkSerialGroundTruth() {
+  while (Serial.available()) {
+    char c = Serial.read();
+    if (c == '1') {
+      groundTruthOccupied = true;
+      Serial.println("\n[GT] Ground truth set to OCCUPIED\n");
+    } else if (c == '0') {
+      groundTruthOccupied = false;
+      Serial.println("\n[GT] Ground truth set to EMPTY\n");
+    } else if (c == 'p' || c == 'P') {
+      confusion_print(cm);
+    }
+  }
+}
+
 void setup() {
   Serial.begin(115200);
   delay(2000);
@@ -322,7 +350,6 @@ void setup() {
   pBLEScan->setInterval(100);
   pBLEScan->setWindow(30);
   
-  // ---> AGGIUNGI QUESTA RIGA <---
   pBLEScan->start(0, nullptr, false); 
   
   Serial.println("[BLE] Scanner Initialized and Listening!");
@@ -360,14 +387,19 @@ void setup() {
   
   Serial.println("\n[FUSION] Warming up... (1Hz measurement cycle)\n");
   Serial.println("========================================");
+
+  // Metrics setup
+  confusion_print_csv_header();
+  Serial.println("[METRICS] Send '1' = room occupied, '0' = room empty, 'p' = print metrics\n");
 }
 
 void loop() {
   loop_network(); // Run background network tasks continuously
 
-  static unsigned long lastFusionMs = 0;
+  // Check for ground-truth commands every loop iteration (not gated by 1Hz timer)
+  checkSerialGroundTruth();
 
-  // Lancia la scansione BLE in modo non bloccante (se non sta già scansionando internamente)
+  static unsigned long lastFusionMs = 0;
 
   // Verifica il timeout del tag del personale (se è uscito dalla stanza)
   if (staff_present && (millis() - lastStaffDetectTime > DEPARTURE_TIMEOUT)) {
@@ -386,12 +418,22 @@ void loop() {
 
   // LOGICA FREEZE STAFF TAG OVERRIDE
   if (staff_present) {
-      // Quando lo staff è presente, freeza lo stato ripristinandolo al salvato (o gestendo l'override)
-      // Manteniamo i vecchi valori di beliefs, oppure ignoriamo il check finale
       result.occupied = saved_occupancy_state; 
   } else {
-      // Salva lo stato in caso entri lo staff
       saved_occupancy_state = result.occupied;
+  }
+
+  // ==========================================================
+  // METRICS: update confusion matrix + CSV row
+  // Skipped during staff override, since that scenario does
+  // not represent a guest occupancy ground-truth condition.
+  // ==========================================================
+  if (!staff_present) {
+    confusion_update(cm, result.occupied, groundTruthOccupied);
+
+    float mU = 1.0f - result.occupiedBelief - result.emptyBelief;
+    confusion_print_csv_row(millis() / 1000, result.occupied, groundTruthOccupied,
+                             result.occupiedBelief, result.emptyBelief, mU, result.conflictK);
   }
 
   Serial.print("[");
@@ -419,6 +461,8 @@ void loop() {
     Serial.print(result.conflictK, 3);
   }
   
+  Serial.print(" | GT=");
+  Serial.print(groundTruthOccupied ? "OCC" : "EMP");
   Serial.print(" | ");
   Serial.println(result.occupied ? ">>> OCCUPIED <<<" : "EMPTY");
 
@@ -431,6 +475,15 @@ void loop() {
   }
   
   publish_data_to_mqtt(result.occupied, roomStatus, staff_present, current_staff_rssi);
+
+  // ==========================================================
+  // METRICS: periodic summary print (every 60 cycles = ~60s)
+  // ==========================================================
+  static int metricsCounter = 0;
+  if (++metricsCounter >= 60) {
+    confusion_print(cm);
+    metricsCounter = 0;
+  }
 }
 
 #endif // DOWA_DST_FUSION_TEMPLATE_H
