@@ -1,0 +1,55 @@
+--- Terminal on /dev/cu.usbmodem101 | 115200 8-N-1
+--- Available filters and text transformations: debug, default, direct, esp32_exception_decoder, hexlify, log2file, nocontrol, printable, send_on_enter, time
+--- More details at https://bit.ly/pio-monitor-filters
+--- Quit: Ctrl+C | Menu: Ctrl+T | Help: Ctrl+T followed by Ctrl+H
+381,1,1,0.8850,0.1067,0.0083,0.6730
+[381s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+382,1,1,0.8850,0.1067,0.0083,0.6730
+[382s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+[ESP-NOW] Packet from 2C:BC:BB:93:1E:38 | len: 2 (expected 2)
+[ESP-NOW] SUCCESS! PIR Status: STILL | Room ID: 104
+W] Packet from 2C:BC:BB:93:1E:38 | len: 2 (expected 2)
+[ESP-NOW] SUCCESS! PIR Status: STILL | Room ID: 104
+383,1,1,0.8850,0.1067,0.0083,0.6730
+[383s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+384,1,1,0.8850,0.1067,0.0083,0.6730
+[384s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+385,1,1,0.8850,0.1067,0.0083,0.6730
+[385s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+[ESP-NOW] Packet from 2C:BC:BB:93:1E:38 | len: 2 (expected 2)
+[ESP-NOW] SUCCESS! PIR Status: STILL | Room ID: 104
+386,1,1,0.8850,0.1067,0.0083,0.6730
+[386s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+387,1,1,0.8850,0.1067,0.0083,0.6730
+[387s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+388,1,1,0.8850,0.1067,0.0083,0.6730
+[388s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+389,1,1,0.8850,0.1067,0.0083,0.6730
+[389s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+[ESP-NOW] Packet from 2C:BC:BB:93:1E:38 | len: 2 (expected 2)
+[ESP-NOW] SUCCESS! PIR Status: STILL | Room ID: 104
+390,1,1,0.8850,0.1067,0.0083,0.6730
+[390s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+[BLE] Saw nearby device named: 'FILO-TAG' (RSSI: -83)
+391,1,1,0.8850,0.1067,0.0083,0.6730
+[391s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+392,1,1,0.8850,0.1067,0.0083,0.6730
+[392s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+[ESP-NOW] Packet from 2C:BC:BB:93:1E:38 | len: 2 (expected 2)
+[ESP-NOW] SUCCESS! PIR Status: STILL | Room ID: 104
+[ESP-NOW] Packet from 2C:BC:BB:93:1E:38 | len: 2 (expected 2)
+[ESP-NOW] SUCCESS! PIR Status: STILL | Room ID: 104
+393,1,1,0.8850,0.1067,0.0083,0.6730
+[393s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+394,1,1,0.8850,0.1067,0.0083,0.6730
+[394s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+395,1,1,0.8850,0.1067,0.0083,0.6730
+[395s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+[ESP-NOW] Packet from 2C:BC:BB:93:1E:38 | len: 2 (expected 2)
+[ESP-NOW] SUCCESS! PIR Status: STILL | Room ID: 104
+396,1,1,0.8850,0.1067,0.0083,0.6730
+[396s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<
+[ESP-NOW] Packet from 2C:BC:BB:93:1E:38 | len: 2 (expected 2)
+[ESP-NOW] SUCCESS! PIR Status: STILL | Room ID: 104
+397,1,1,0.8850,0.1067,0.0083,0.6730
+[397s] RADAR=2 PIR=0 TVOC=0ppb eCO2=400ppm | m(O)=0.885 m(E)=0.107 | K=0.673 | GT=OCC | >>> OCCUPIED <<<

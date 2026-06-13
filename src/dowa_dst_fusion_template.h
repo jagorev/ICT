@@ -390,7 +390,8 @@ void setup() {
 
   // Metrics setup
   confusion_print_csv_header();
-  Serial.println("[METRICS] Send '1' = room occupied, '0' = room empty, 'p' = print metrics\n");
+
+Serial.println("DATA,Timestamp,Occupied,GroundTruth,mOccupied,mEmpty,mUnknown,ConflictK,TP,TN,FP,FN,Accuracy,Precision,Recall,F1_Score");  Serial.println("[METRICS] Send '1' = room occupied, '0' = room empty, 'p' = print metrics\n");
 }
 
 void loop() {
@@ -434,6 +435,28 @@ void loop() {
     float mU = 1.0f - result.occupiedBelief - result.emptyBelief;
     confusion_print_csv_row(millis() / 1000, result.occupied, groundTruthOccupied,
                              result.occupiedBelief, result.emptyBelief, mU, result.conflictK);
+
+   // ========================================================================
+    // NUOVO: Calcolo locale delle metriche per la riga CSV estesa
+    // ========================================================================
+    static unsigned long tp = 0, tn = 0, fp = 0, fn = 0;
+    if (result.occupied && groundTruthOccupied) tp++;
+    else if (!result.occupied && !groundTruthOccupied) tn++;
+    else if (result.occupied && !groundTruthOccupied) fp++;
+    else if (!result.occupied && groundTruthOccupied) fn++;
+
+    unsigned long total = tp + tn + fp + fn;
+    float accuracy = (total > 0) ? (float)(tp + tn) / total : 0.0f;
+    float precision = (tp + fp) > 0 ? (float)tp / (tp + fp) : 0.0f;
+    float recall = (tp + fn) > 0 ? (float)tp / (tp + fn) : 0.0f;
+    float f1 = (precision + recall) > 0 ? 2.0f * (precision * recall) / (precision + recall) : 0.0f;
+
+    // Stampa la riga unica CSV super-completa
+    Serial.printf("DATA,%lu,%d,%d,%0.4f,%0.4f,%0.4f,%0.4f,%lu,%lu,%lu,%lu,%0.4f,%0.4f,%0.4f,%0.4f\n", 
+                  millis() / 1000, result.occupied, groundTruthOccupied, 
+                  result.occupiedBelief, result.emptyBelief, mU, result.conflictK,
+                  tp, tn, fp, fn, accuracy, precision, recall, f1);
+    // ========================================================================
   }
 
   Serial.print("[");
