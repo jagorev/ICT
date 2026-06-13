@@ -235,7 +235,7 @@ int headerCount = 0;
 uint8_t packet[64];
 int packetLen = 0;
 bool readingPacket = false;
-float MAX_ROOM_DISTANCE = 2.0; // Distance of your glass wall
+float MAX_ROOM_DISTANCE = 5.0; // Distance of your glass wall
 
 // mmWave Config Command (Wakes up the radar)
 const byte REPORT_MODE_CMD[] = {

@@ -10,7 +10,7 @@
 
 const char* ssid = "DreiPhone";         
 const char* password = "AVANTISAVOIA"; 
-const char* mqtt_server = "172.20.10.8"; 
+const char* mqtt_server = "172.20.10.9"; 
 const char* mqtt_data_topic = "vda-telkonet/team7/room4b"; 
 const char* mqtt_setup_topic = "vda-telkonet/team7/setup";
 
